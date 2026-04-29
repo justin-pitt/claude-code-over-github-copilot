@@ -2,6 +2,9 @@
 .env
 .env.*
 
+# Internal CDW-flavored Loop write-up — kept local, not part of the public repo
+LOOP.md
+
 # Backup directories
 backups/
 

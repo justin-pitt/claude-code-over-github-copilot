@@ -29,16 +29,23 @@ def main():
         except (json.JSONDecodeError, IOError):
             settings = {}
 
-    # Add proxy configuration
-    settings['env'] = {
+    # Preserve any existing env entries; only overwrite proxy-related keys.
+    env = settings.get('env', {}) or {}
+    env.update({
         'ANTHROPIC_AUTH_TOKEN': master_key,
         'ANTHROPIC_BASE_URL': 'http://localhost:4444',
-        'ANTHROPIC_MODEL': 'claude-sonnet-4',
-        'ANTHROPIC_SMALL_FAST_MODEL': 'gpt-4'
-    }
+        # Interim — Claude family is premium-quota-gated on this Copilot account.
+        # Flip back to claude-opus-4-7 / claude-haiku-4-5 once the admin enables it.
+        'ANTHROPIC_MODEL': 'gpt-5-mini',
+        'ANTHROPIC_SMALL_FAST_MODEL': 'gpt-4.1',
+        # Copilot doesn't pass through Anthropic cache_control headers; omit
+        # the attribution block so any LiteLLM-side cache keys on body match.
+        'CLAUDE_CODE_ATTRIBUTION_HEADER': '0',
+    })
+    settings['env'] = env
 
     # Update model to use
-    settings['model'] = 'claude-sonnet-4'
+    settings['model'] = 'gpt-5-mini'
 
     # Add schema if it's a new file
     if '$schema' not in settings:

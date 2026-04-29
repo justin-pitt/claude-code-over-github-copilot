@@ -1,5 +1,7 @@
 # Core dependencies
-litellm[proxy]>=1.0.0
+# IMPORTANT: skip litellm 1.82.7 and 1.82.8 — those PyPI builds were compromised
+# with credential-stealing malware (per Anthropic's LLM gateway docs).
+litellm[proxy]>=1.83.0,!=1.82.7,!=1.82.8
 psutil>=5.9.0
 requests>=2.31.0
 dnspython>=2.4.0

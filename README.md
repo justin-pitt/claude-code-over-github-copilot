@@ -1,109 +1,90 @@
-# Claude Code over GitHub Copilot-model endpoints - Setup Instructions
+# Claude Code over GitHub Copilot
 
-## Overview
+Use the [Claude Code](https://claude.com/claude-code) harness with models served by your **GitHub Copilot** subscription, so company data stays inside an already-approved LLM provider instead of going to a personal Anthropic account.
 
-This project allows you to use Claude Code with GitHub Copilot instead of Anthropic's servers. 
-We can't send company information to Anthropic, but we already have an agreement with GitHub Copilot for our 
-VSCode and IDEA agents.
+Anthropic officially documents [LiteLLM as an LLM gateway](https://code.claude.com/docs/en/llm-gateway) for Claude Code. This repo is a Windows-friendly wrapper around that pattern, with the GitHub Copilot model IDs pre-mapped.
 
-The architecture uses:
-- **Translation Layer**: LiteLLM proxy to translate between Claude Code and GitHub Copilot APIs
-- **Local Proxy**: LiteLLM running locally (no external traffic to third parties)
-- **GitHub Integration**: Direct connection to GitHub Copilot models we're already authorized to use
+## How it works
 
-**References:**
-- [Claude Code LLM Gateway Documentation](https://docs.anthropic.com/en/docs/claude-code/llm-gateway)
-- [LiteLLM Quick Start](https://docs.litellm.ai/#quick-start-proxy---cli)
-- [LiteLLM GitHub Copilot Provider](https://docs.litellm.ai/docs/providers/github_copilot)
-
-## Quick Start
-
-### 1. Install Claude Code (if not already installed)
-```bash
-# Install Claude Code desktop application via npm
-make install-claude
+```
+Claude Code  --(Anthropic /v1/messages)-->  LiteLLM proxy (localhost:4444)  --(OpenAI /chat/completions + Copilot OAuth)-->  api.githubcopilot.com
 ```
 
-This command installs Claude Code globally using npm. Requires Node.js and npm to be installed.
+Claude Code thinks it's talking to Anthropic. LiteLLM translates each request to the OpenAI-shape that Copilot's backend expects, and injects the GitHub Copilot OAuth + editor headers automatically.
 
-### 2. Initial Setup
-```bash
-# Set up environment, dependencies, and generate API keys
-make setup
-```
+## What works
 
-This command:
-- Creates a Python virtual environment
-- Installs required dependencies
-- Generates random UUID-based API keys in `.env` file (only if it doesn't exist)
+- Plain chat
+- Tool use (the load-bearing path for Claude Code's MCP servers, Bash, Edit, etc.)
+- Streaming
+- Vision (when supported by the chosen model)
+- Extended thinking / `reasoning_effort` (Claude 4 family — gated by quota, see below)
 
-### 3. Configure Claude Code
-```bash
-# Configure Claude Code to use the local proxy
-make claude-enable
-```
+## What doesn't
 
-This command:
-- Backs up your existing Claude Code settings
-- Configures Claude Code to use `http://localhost:4444` as the API endpoint
-- Sets up model mappings (claude-sonnet-4, claude-opus-4, gpt-4)
+- **Anthropic prompt caching.** `cache_control` breakpoints don't survive translation to Copilot's API. Long system prompts get re-tokenized every turn — slower, and on metered tiers, more expensive.
+- **1M context on Opus 4.7.** Copilot exposes Anthropic models at 200K context.
+- **Native Anthropic features** like citations, computer-use, message-batches API.
 
-### 4. Start the Proxy Server
-- **Important**: The first run will trigger GitHub device authentication - follow the prompts in the terminal
-```bash
-# Start LiteLLM proxy server
-make start
-```
+## Premium-model quota (read this before installing)
 
-This will:
-- Activate the virtual environment
-- Start LiteLLM with the `copilot-config.yaml` configuration
+GitHub Copilot splits its model catalog into two tiers:
 
-### 5. Test the Connection
-```bash
-# Test that everything is working
-make test
-```
+| Tier | Models | Cost on a typical Business / Enterprise plan |
+|---|---|---|
+| **Included** | `gpt-4.1`, `gpt-4o`, `gpt-4o-mini`, `gpt-5-mini`, etc. | Unlimited |
+| **Premium** | All Claude models (Opus / Sonnet / Haiku, every version), full `gpt-5`, Gemini, Grok | Burns "premium requests" from a per-user monthly bucket |
 
-### 6. In your project folder, start Claude Code
+If you call a premium model without quota, the API returns `HTTP 402 You have no quota`. Have your Copilot admin allocate premium-request quota to your account before expecting Claude to work — otherwise you'll be stuck on the included GPT models.
+
+The repo ships with `gpt-5-mini` as the default to make first-run usable on a base subscription. Flip it to `claude-opus-4-7` once your admin grants premium quota.
+
+## Setup (Windows / Git Bash)
+
+Prerequisites:
+- Python 3.12 (3.14 currently breaks `orjson` wheel install). `winget install Python.Python.3.12` if missing.
+- Node.js + npm (only if you need to install Claude Code itself: `npm i -g @anthropic-ai/claude-code`).
 
 ```bash
-# Open Claude Code in your project folder
-claude
+git clone <this repo url>
+cd claude-code-over-github-copilot
+./run.sh setup           # venv, deps, .env keys
+./run.sh start           # foreground; first run prompts a GitHub device-code OAuth
 ```
 
-## Model Configuration
+In a second terminal:
 
-The proxy exposes these models to Claude Code:
-
-| Claude Code Model | Maps to GitHub Copilot           |
-|-------------------|----------------------------------|
-| `claude-sonnet-4` | `github_copilot/claude-sonnet-4` |
-| `gpt-4`         | `github_copilot/gpt-4`         |
-
-## Additional Commands
-
-### Check Status
 ```bash
-# View current Claude Code configuration and proxy status
-make claude-status
+./run.sh test            # 5-step smoke test (chat, /v1/messages, tool use, streaming)
+./run.sh claude-enable   # patches ~/.claude/settings.json (auto-backs it up)
+./run.sh claude-status   # confirm 'Using local proxy' + 'Proxy: RUNNING'
 ```
 
-### Restore Original Settings
-```bash
-# Restore Claude Code to default Anthropic servers
-make claude-disable
-```
+Then run `claude` in any project directory.
 
-### Stop the Proxy
-```bash
-# Stop the LiteLLM proxy server
-make stop
-```
+## Setup (macOS / Linux)
 
-## Troubleshooting
+The upstream `Makefile` (`make setup` / `make start` / `make claude-enable`) is the supported path. The `run.sh` shipped here is the Windows equivalent.
 
-- **Authentication Issues**: The first `make start` will prompt for GitHub authentication
-- **Connection Problems**: Use `make test` to verify the proxy is working
-- **Configuration Issues**: Use `make claude-status` to check your settings
-- **Reset Everything**: Use `make claude-disable` then `make claude-enable` to reconfigure
+## Switching models
+
+Change the values in [scripts/claude_enable.py](scripts/claude_enable.py) under the `env` dict, then re-run `./run.sh claude-enable`. Available IDs are whatever the LiteLLM config in [copilot-config.yaml](copilot-config.yaml) exposes — currently:
+
+- `claude-opus-4-7` / `claude-opus-4-6` / `claude-opus-4-5` (premium)
+- `claude-sonnet-4-6` / `claude-sonnet-4-5` (premium)
+- `claude-haiku-4-5` (premium)
+- `gpt-5` (premium)
+- `gpt-5-mini` (included — current default)
+- `gpt-4.1` (included)
+
+Note: client-facing names use Anthropic's `dash` convention. They're translated to Copilot's `dot` form (`claude-opus-4.7`) on the wire, since that's the actual ID Copilot's API expects.
+
+## Security notes
+
+- **Pin LiteLLM** to `>=1.83.0`. Versions `1.82.7` and `1.82.8` were [compromised with credential-stealing malware](https://github.com/BerriAI/litellm/issues/24518). The `requirements.txt` here excludes them.
+- **Localhost-only by default.** The proxy binds to `0.0.0.0:4444` for compatibility, but the LiteLLM master key in `.env` is what gates access. Keep `.env` out of git (it already is).
+- **No data leaves your laptop except via the Copilot API.** Same surface as using Copilot in VS Code.
+
+## Acknowledgements
+
+Forked structure and Makefile from [kjetiljd/claude-code-over-github-copilot](https://github.com/kjetiljd/claude-code-over-github-copilot). Approach inspired by Anthropic's [LLM gateway docs](https://code.claude.com/docs/en/llm-gateway) and [this writeup](https://blog.f12.no/wp/2025/09/22/using-claude-code-with-github-copilot-a-guide/).
