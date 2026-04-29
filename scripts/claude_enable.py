@@ -34,10 +34,8 @@ def main():
     env.update({
         'ANTHROPIC_AUTH_TOKEN': master_key,
         'ANTHROPIC_BASE_URL': 'http://localhost:4444',
-        # Interim — Claude family is premium-quota-gated on this Copilot account.
-        # Flip back to claude-opus-4-7 / claude-haiku-4-5 once the admin enables it.
-        'ANTHROPIC_MODEL': 'gpt-5-mini',
-        'ANTHROPIC_SMALL_FAST_MODEL': 'gpt-4.1',
+        'ANTHROPIC_MODEL': 'claude-opus-4-7',
+        'ANTHROPIC_SMALL_FAST_MODEL': 'claude-haiku-4-5',
         # Copilot doesn't pass through Anthropic cache_control headers; omit
         # the attribution block so any LiteLLM-side cache keys on body match.
         'CLAUDE_CODE_ATTRIBUTION_HEADER': '0',
@@ -45,7 +43,7 @@ def main():
     settings['env'] = env
 
     # Update model to use
-    settings['model'] = 'gpt-5-mini'
+    settings['model'] = 'claude-opus-4-7'
 
     # Add schema if it's a new file
     if '$schema' not in settings:

@@ -68,16 +68,61 @@ The upstream `Makefile` (`make setup` / `make start` / `make claude-enable`) is 
 
 ## Switching models
 
-Change the values in [scripts/claude_enable.py](scripts/claude_enable.py) under the `env` dict, then re-run `./run.sh claude-enable`. Available IDs are whatever the LiteLLM config in [copilot-config.yaml](copilot-config.yaml) exposes — currently:
+The default is `claude-opus-4-7` for the main model and `claude-haiku-4-5` for the small/fast model (used by Claude Code for cheap operations like summarizing tool output). Both are **premium** on Copilot — see the quota section above.
 
-- `claude-opus-4-7` / `claude-opus-4-6` / `claude-opus-4-5` (premium)
-- `claude-sonnet-4-6` / `claude-sonnet-4-5` (premium)
-- `claude-haiku-4-5` (premium)
-- `gpt-5` (premium)
-- `gpt-5-mini` (included — current default)
-- `gpt-4.1` (included)
+### Pre-configured models
 
-Note: client-facing names use Anthropic's `dash` convention. They're translated to Copilot's `dot` form (`claude-opus-4.7`) on the wire, since that's the actual ID Copilot's API expects.
+The proxy ships with these Claude Code → Copilot mappings:
+
+| Claude Code model name | Copilot model | Tier |
+|---|---|---|
+| `claude-opus-4-7` | `claude-opus-4.7` | premium |
+| `claude-opus-4-6` | `claude-opus-4.6` | premium |
+| `claude-opus-4-5` | `claude-opus-4.5` | premium |
+| `claude-sonnet-4-6` | `claude-sonnet-4.6` | premium |
+| `claude-sonnet-4-5` | `claude-sonnet-4.5` | premium |
+| `claude-haiku-4-5` | `claude-haiku-4.5` | premium |
+| `gpt-5` | `gpt-5.4` | premium |
+| `gpt-5-mini` | `gpt-5-mini` | included |
+| `gpt-4.1` | `gpt-4.1` | included |
+
+Client names use Anthropic's `dash` convention; they're translated to Copilot's `dot` form on the wire, since that's the actual ID Copilot's API expects.
+
+### Changing the default
+
+Edit the `env` dict in [scripts/claude_enable.py](scripts/claude_enable.py) — set `ANTHROPIC_MODEL` (main) and `ANTHROPIC_SMALL_FAST_MODEL` (small/fast) to any of the names from the table. Then:
+
+```bash
+./run.sh claude-enable
+```
+
+Common combinations:
+
+- **Best Claude experience (premium quota required)** — `claude-opus-4-7` + `claude-haiku-4-5` (default)
+- **All-included path (no premium quota)** — `gpt-5-mini` + `gpt-4.1`
+- **Cheaper Claude (premium quota required)** — `claude-sonnet-4-6` + `claude-haiku-4-5`
+
+### Listing models your account can actually call
+
+The model list above is what the proxy *exposes*. Your Copilot account may not have policy access to all of them. Run:
+
+```bash
+./list-copilot-models.sh --enabled-only
+```
+
+…to dump the live model list straight from `api.githubcopilot.com/models`. That's the source of truth for what your specific account can use.
+
+### Adding a new model
+
+If a model exists in your Copilot tenant but not in [copilot-config.yaml](copilot-config.yaml), add it:
+
+```yaml
+- model_name: my-new-model
+  litellm_params:
+    model: github_copilot/my-new-model-id
+```
+
+Then restart the proxy (`./run.sh stop && ./run.sh start`) and reference `my-new-model` from `claude_enable.py`.
 
 ## Security notes
 
@@ -88,3 +133,16 @@ Note: client-facing names use Anthropic's `dash` convention. They're translated 
 ## Acknowledgements
 
 Forked structure and Makefile from [kjetiljd/claude-code-over-github-copilot](https://github.com/kjetiljd/claude-code-over-github-copilot). Approach inspired by Anthropic's [LLM gateway docs](https://code.claude.com/docs/en/llm-gateway) and [this writeup](https://blog.f12.no/wp/2025/09/22/using-claude-code-with-github-copilot-a-guide/).
+
+## License
+
+The [MIT License](LICENSE) covers contributions by Justin Pitt:
+
+- `run.sh`, `smoke-test.sh`
+- `README.md`, `LICENSE`
+- `copilot-config.yaml` (rewritten)
+- modifications to `scripts/claude_enable.py`, `requirements.txt`, `.gitignore`
+
+The following files originate from the upstream repo [kjetiljd/claude-code-over-github-copilot](https://github.com/kjetiljd/claude-code-over-github-copilot) and retain their original status (the upstream is unlicensed at time of fork — verify before redistributing):
+
+- `Makefile`, `generate_env.py`, `list-copilot-models.sh`, `scripts/claude_disable.py`
