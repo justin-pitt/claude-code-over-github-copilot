@@ -15,6 +15,19 @@ set -e
 
 cd "$(dirname "$0")"
 
+# This script is Windows-only (Git Bash). On macOS/Linux, use the Makefile.
+case "$OSTYPE" in
+  msys*|cygwin*|win32) ;;
+  *)
+    echo "ERR: run.sh is the Windows (Git Bash) path. On macOS/Linux, use the Makefile:"
+    echo "       make setup"
+    echo "       make start"
+    echo "       make claude-enable"
+    echo "     See README.md > 'Setup (macOS / Linux)'."
+    exit 1
+    ;;
+esac
+
 # Windows venv paths differ from Linux
 VENV_BIN="venv/Scripts"
 [[ -d "venv/bin" ]] && VENV_BIN="venv/bin"  # fallback if someone made a Linux venv

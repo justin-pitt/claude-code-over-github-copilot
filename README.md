@@ -2,7 +2,7 @@
 
 Use the [Claude Code](https://claude.com/claude-code) harness with models served by your **GitHub Copilot** subscription, so company data stays inside an already-approved LLM provider instead of going to a personal Anthropic account.
 
-Anthropic officially documents [LiteLLM as an LLM gateway](https://code.claude.com/docs/en/llm-gateway) for Claude Code. This repo is a Windows-friendly wrapper around that pattern, with the GitHub Copilot model IDs pre-mapped.
+Anthropic officially documents [LiteLLM as an LLM gateway](https://code.claude.com/docs/en/llm-gateway) for Claude Code. This repo wraps that pattern with the GitHub Copilot model IDs pre-mapped, and ships entry points for both macOS/Linux (`Makefile`) and Windows (`run.sh`, Git Bash).
 
 ## How it works
 
@@ -39,32 +39,31 @@ If you call a premium model without quota, the API returns `HTTP 402 You have no
 
 The repo ships with `gpt-5-mini` as the default to make first-run usable on a base subscription. Flip it to `claude-opus-4-7` once your admin grants premium quota.
 
-## Setup (Windows / Git Bash)
+## Setup
 
 Prerequisites:
-- Python 3.12 (3.14 currently breaks `orjson` wheel install). `winget install Python.Python.3.12` if missing.
+- Python 3.12 (3.14 currently breaks `orjson` wheel install).
+  - macOS: `brew install python@3.12` · Linux: distro package or `pyenv` · Windows: `winget install Python.Python.3.12`
 - Node.js + npm (only if you need to install Claude Code itself: `npm i -g @anthropic-ai/claude-code`).
+
+Clone:
 
 ```bash
 git clone <this repo url>
 cd claude-code-over-github-copilot
-./run.sh setup           # venv, deps, .env keys
-./run.sh start           # foreground; first run prompts a GitHub device-code OAuth
 ```
 
-In a second terminal:
+Pick the entry point for your OS. They're equivalent:
 
-```bash
-./run.sh test            # 5-step smoke test (chat, /v1/messages, tool use, streaming)
-./run.sh claude-enable   # patches ~/.claude/settings.json (auto-backs it up)
-./run.sh claude-status   # confirm 'Using local proxy' + 'Proxy: RUNNING'
-```
+| Step | macOS / Linux | Windows (Git Bash) |
+|---|---|---|
+| venv, deps, .env keys | `make setup` | `./run.sh setup` |
+| start proxy (foreground; first run does GitHub OAuth) | `make start` | `./run.sh start` |
+| smoke test (in a second terminal) | `make test` | `./run.sh test` |
+| point Claude Code at the proxy | `make claude-enable` | `./run.sh claude-enable` |
+| confirm wiring | `make claude-status` | `./run.sh claude-status` |
 
 Then run `claude` in any project directory.
-
-## Setup (macOS / Linux)
-
-The upstream `Makefile` (`make setup` / `make start` / `make claude-enable`) is the supported path. The `run.sh` shipped here is the Windows equivalent.
 
 ## Switching models
 
