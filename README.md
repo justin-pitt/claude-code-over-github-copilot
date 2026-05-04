@@ -123,6 +123,26 @@ If a model exists in your Copilot tenant but not in [copilot-config.yaml](copilo
 
 Then restart the proxy (`./run.sh stop && ./run.sh start`) and reference `my-new-model` from `claude_enable.py`.
 
+## Troubleshooting
+
+### `Auth conflict: Both a token (ANTHROPIC_AUTH_TOKEN) and an API key (ANTHROPIC_API_KEY) are set`
+
+You have `ANTHROPIC_API_KEY` exported in your shell (usually leftover from a prior direct-Anthropic install). `claude_enable.py` writes `ANTHROPIC_AUTH_TOKEN` (the proxy master key) into `~/.claude/settings.json`, and Claude Code refuses to pick a winner when both are present.
+
+For the proxy path to win, unset `ANTHROPIC_API_KEY`:
+
+```bash
+# find where it's exported
+grep -nH ANTHROPIC_API_KEY ~/.zshrc ~/.zprofile ~/.bash_profile ~/.bashrc ~/.profile 2>/dev/null
+
+# delete or comment that line, then open a new terminal
+# (or in the current shell:)
+unset ANTHROPIC_API_KEY
+claude
+```
+
+On Windows, check `setx` / User Environment Variables for the same key and remove it there.
+
 ## Security notes
 
 - **Pin LiteLLM** to `>=1.83.0`. Versions `1.82.7` and `1.82.8` were [compromised with credential-stealing malware](https://github.com/BerriAI/litellm/issues/24518). The `requirements.txt` here excludes them.
