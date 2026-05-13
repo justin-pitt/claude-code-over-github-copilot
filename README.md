@@ -65,6 +65,30 @@ Pick the entry point for your OS. They're equivalent:
 
 Then run `claude` in any project directory.
 
+## Turning it off
+
+Two things to undo, in either order.
+
+1. Point Claude Code back at Anthropic.
+
+   ```bash
+   make claude-disable        # or: ./run.sh claude-disable
+   ```
+
+   This restores the most recent `~/.claude/settings.json.backup.*` written at `claude-enable` time. If no backup is found, it falls back to `scripts/claude_disable.py`, which strips the `env` block from `~/.claude/settings.json` so Claude Code goes back to its defaults.
+
+2. Stop the proxy.
+
+   ```bash
+   make stop                  # or: ./run.sh stop
+   ```
+
+   Until you stop it, the proxy keeps a `litellm` process running and holds `localhost:4444`.
+
+After both, `claude` in any project will talk directly to `api.anthropic.com` again (assuming you have `ANTHROPIC_API_KEY` set or you sign in with `claude login`).
+
+To re-enable later, run `./run.sh start` and `./run.sh claude-enable` again. No reinstall needed.
+
 ## Switching models
 
 The default is `claude-opus-4-7` for the main model and `claude-haiku-4-5` for the small/fast model (used by Claude Code for cheap operations like summarizing tool output). Both are **premium** on Copilot — see the quota section above.
